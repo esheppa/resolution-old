@@ -49,6 +49,9 @@ impl Year {
     pub fn year_num(&self) -> i32 {
         i32::try_from(self.0).expect("Not pre/post historic")
     }
+    pub fn new(year: i32) -> Self {
+        Year(i64::from(year))
+    }
     pub fn from_date(d: chrono::NaiveDate) -> Self {
         Year(i64::from(d.year()))
     }
