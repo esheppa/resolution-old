@@ -7,11 +7,11 @@ use std::{str, fmt};
 
 const DATE_FORMAT: &str = "%Y-%m-%d";
 
-impl<'de> de::Deserialize<'de> for Date 
+impl<'de> de::Deserialize<'de> for Day 
 {
     fn deserialize<D>(
         deserializer: D,
-    ) -> std::result::Result<Date, D::Error>
+    ) -> std::result::Result<Day, D::Error>
     where
         D: de::Deserializer<'de>,
     {
@@ -22,7 +22,7 @@ impl<'de> de::Deserialize<'de> for Date
     }
 }
 
-impl serde::Serialize for Date {
+impl serde::Serialize for Day {
     fn serialize<S>(
         &self,
         serializer: S,
@@ -38,15 +38,15 @@ impl serde::Serialize for Date {
 
 
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct Date(i64);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Day(i64);
 
 fn base() -> chrono::NaiveDate {
     chrono::NaiveDate::from_ymd(0, 1, 1)
 }
 
 
-impl str::FromStr for Date {
+impl str::FromStr for Day {
     type Err = crate::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let date = chrono::NaiveDate::parse_from_str(s, DATE_FORMAT)?;
@@ -55,33 +55,33 @@ impl str::FromStr for Date {
 }
 
 
-impl fmt::Display for Date {
+impl fmt::Display for Day {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.start())
     }
 }
 
-impl crate::DateResolution for Date {
+impl crate::DateResolution for Day {
     fn start(&self) -> chrono::NaiveDate {
         base() + chrono::Duration::days(self.0)
     }
 }
 
-impl std::convert::From<chrono::NaiveDate> for Date {
-    fn from(d: chrono::NaiveDate) -> Date {
-        Date((base() - d).num_days())
+impl std::convert::From<chrono::NaiveDate> for Day {
+    fn from(d: chrono::NaiveDate) -> Day {
+        Day((base() - d).num_days())
     }
 }
 
-impl crate::TimeResolution for Date {
+impl crate::TimeResolution for Day {
     fn between(&self, other: Self) -> i64 {
         other.0 - self.0
     }
-    fn succ_n(&self, n: u32) -> Date {
-        Date(self.0 + i64::from(n))
+    fn succ_n(&self, n: u32) -> Day {
+        Day(self.0 + i64::from(n))
     }
-    fn pred_n(&self, n: u32) -> Date {
-        Date(self.0 - i64::from(n))
+    fn pred_n(&self, n: u32) -> Day {
+        Day(self.0 - i64::from(n))
     }
     fn naive_date_time(&self) -> chrono::NaiveDateTime {
         self.start().and_hms(0, 0, 0)
@@ -90,8 +90,11 @@ impl crate::TimeResolution for Date {
         self.0
     }
     fn from_monotonic(idx: i64) -> Self {
-        Date(idx)
+        Day(idx)
+    }
+    fn name(&self) -> String {
+        "Day".to_string()
     }
 }
 
-impl Date {}
+impl Day {}

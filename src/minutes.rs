@@ -7,7 +7,7 @@ use std::{cmp, fmt};
 
 const NUM_SECS: i64 = 60;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Minutes<const N: u32> {
     index: i64,
 }
@@ -97,6 +97,9 @@ impl<const N: u32> crate::TimeResolution for Minutes<N> {
     }
     fn from_monotonic(index: i64) -> Self {
         Minutes { index }
+    }
+    fn name(&self) -> String {
+        format!("Minutes[{}]", N)
     }
 }
 

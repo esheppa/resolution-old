@@ -47,7 +47,7 @@ impl str::FromStr for Month {
 
 
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Month(i64); // number of months +- since 0AD
 
 impl crate::TimeResolution for Month {
@@ -68,6 +68,9 @@ impl crate::TimeResolution for Month {
     }
     fn from_monotonic(idx: i64) -> Self {
         Month(idx)
+    }
+    fn name(&self) -> String {
+        "Month".to_string()
     }
 }
 
@@ -108,7 +111,7 @@ impl fmt::Display for Month {
 #[cfg(test)]
 mod tests {
     use super::Month;
-    use crate::resolution::DateResolution;
+    use crate::DateResolution;
 
     #[test]
     fn test_start() {

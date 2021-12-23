@@ -4,7 +4,7 @@ use serde::{
     de,
     ser::{self, SerializeStruct},
 };
-use std::{any, num, collections, convert::TryFrom, fmt, result};
+use std::{any, num, collections, convert::TryFrom, fmt, mem, hash};
 
 mod minutes; 
 pub use minutes::Minutes;
@@ -14,14 +14,36 @@ pub type FiveMinute = Minutes<5>;
 pub type HalfHour = Minutes<30>;
 pub type Hour = Minutes<60>;
 
-mod date;
-pub use date::Date;
+mod day;
+pub use day::Day;
 mod month;
 pub use month::Month;
 mod quarter;
 pub use quarter::Quarter;
 mod year;
 pub use year::Year;
+
+mod week;
+// pub use week::Week;
+
+
+fn format_erased_resolution(tid: any::TypeId, val: i64) -> String {
+    if tid == any::TypeId::of::<FiveMinute>() {
+        format!("FiveMinute:{}", FiveMinute::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Day>() {
+        format!("Date:{}", Day::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Month>() {
+        format!("Month:{}", Month::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Quarter>() {
+        format!("Quarter:{}", Quarter::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Year>() {
+        format!("Year:{}", Year::from_monotonic(val))
+    } else {
+        panic!("Unhandled dateresolution type")
+    }
+}
+
+
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -37,6 +59,8 @@ pub enum Error {
     ParseDate(#[from] chrono::ParseError),
     #[error("Error parsing {ty_name} from input: {input}")]
     ParseCustom { ty_name: &'static str, input: String },
+    #[error("Time range cannot be created from an empty set of periods")]
+    EmptyRange,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -58,6 +82,7 @@ pub trait TimeResolution:
     + Eq
     + PartialOrd
     + Ord
+    + hash::Hash
     + Sized
     + serde::Serialize
     + de::DeserializeOwned
@@ -83,6 +108,8 @@ pub trait TimeResolution:
     fn between(&self, other: Self) -> i64;
 
     fn naive_date_time(&self) -> chrono::NaiveDateTime;
+
+    fn name(&self) -> String;
 }
 
 // This trait exists to be able to provide a trait
@@ -140,7 +167,7 @@ pub trait DateResolution: TimeResolution {
 
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize, Hash)]
 pub struct TimeRange<P: TimeResolution> {
     #[serde(bound(deserialize = "P: de::DeserializeOwned"))]
     start: P,
@@ -148,7 +175,7 @@ pub struct TimeRange<P: TimeResolution> {
 }
 
 pub trait AsDateRange {
-    fn as_date_range(&self) -> TimeRange<Date>;
+    fn as_date_range(&self) -> TimeRange<Day>;
 }
 pub trait AsMonthRange {
     fn as_month_range(&self) -> TimeRange<Month>;
@@ -158,13 +185,13 @@ pub trait AsQuarterRange {
 }
 
 impl AsDateRange for Quarter {
-    fn as_date_range(&self) -> TimeRange<Date> {
+    fn as_date_range(&self) -> TimeRange<Day> {
         todo!()
     }
 }
 
 impl<D: AsDateRange + TimeResolution> AsDateRange for TimeRange<D> {
-    fn as_date_range(&self) -> TimeRange<Date> {
+    fn as_date_range(&self) -> TimeRange<Day> {
         todo!()
     }
 }
@@ -173,8 +200,8 @@ pub trait Rescale<Out: DateResolution> {
     fn rescale(&self) -> TimeRange<Out>;
 }
 
-impl Rescale<Date> for Quarter {
-    fn rescale(&self) -> TimeRange<Date> {
+impl Rescale<Day> for Quarter {
+    fn rescale(&self) -> TimeRange<Day> {
         todo!()
     }
 }
@@ -234,6 +261,32 @@ impl<P: TimeResolution> TimeRange<P> {
     // use with the cacheresponse!
     pub fn from_indexes(idx: &[i64]) -> Result<TimeRange<P>> {
         todo!()
+    }
+    pub fn from_map(map: collections::BTreeSet<i64>) -> Option<collections::HashSet<TimeRange<P>>> {
+
+        if map.is_empty() {
+            return None;
+        }
+
+        let mut iter = map.into_iter();
+
+        let mut prev = iter.next()?;
+        let mut current_range = TimeRange { start: P::from_monotonic(prev), len: 1 };
+        let mut ranges = collections::HashSet::new();
+        for val in iter {
+
+            if val == prev + 1 {
+                current_range.len += 1;
+            } else {
+                let mut old_range = TimeRange { start: P::from_monotonic(val), len: 1 };
+                mem::swap(&mut current_range, &mut old_range);
+                ranges.insert(old_range);
+            }
+
+            prev = val;
+        }
+
+        Some(ranges)
     }
     pub fn to_indexes(&self) -> collections::BTreeSet<i64> {
         self.iter().map(|p| p.to_monotonic()).collect()

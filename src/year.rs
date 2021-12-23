@@ -6,7 +6,7 @@ use serde::{
 };
 use std::{str, convert::TryFrom, fmt};
 
-#[derive(Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord)]
+#[derive(Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord, Hash)]
 pub struct Year(i64);
 
 impl crate::DateResolution for Year {
@@ -33,6 +33,9 @@ impl crate::TimeResolution for Year {
     }
     fn to_monotonic(&self) -> i64 {
         self.0
+    }
+    fn name(&self) -> String {
+        "Year".to_string()
     }
 }
 

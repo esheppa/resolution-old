@@ -6,7 +6,7 @@ use serde::{
 };
 use std::{str, cmp, convert::TryFrom, fmt};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Quarter(i64);
 
 impl crate::TimeResolution for Quarter {
@@ -27,6 +27,9 @@ impl crate::TimeResolution for Quarter {
     }
     fn to_monotonic(&self) -> i64 {
         self.0
+    }
+    fn name(&self) -> String {
+        "Quarter".to_string()
     }
 }
 

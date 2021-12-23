@@ -17,7 +17,9 @@ features = ["derive"]
 
 [dependencies.chrono]
 version = "0.4"
-features = ["serde"]
+# avoid the "clock" feature
+default-features = false
+features = ["serde", "std"]
 
 [dev-dependencies]
 anyhow = "1"
