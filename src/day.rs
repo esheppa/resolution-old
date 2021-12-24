@@ -3,30 +3,24 @@ use serde::{
     de,
     ser::{self, SerializeStruct},
 };
-use std::{str, fmt};
+use std::{fmt, str};
 
 const DATE_FORMAT: &str = "%Y-%m-%d";
 
-impl<'de> de::Deserialize<'de> for Day 
-{
-    fn deserialize<D>(
-        deserializer: D,
-    ) -> std::result::Result<Day, D::Error>
+impl<'de> de::Deserialize<'de> for Day {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Day, D::Error>
     where
         D: de::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let date = chrono::NaiveDate::parse_from_str(&s, DATE_FORMAT)
-            .map_err(serde::de::Error::custom)?;
+        let date =
+            chrono::NaiveDate::parse_from_str(&s, DATE_FORMAT).map_err(serde::de::Error::custom)?;
         Ok(date.into())
     }
 }
 
 impl serde::Serialize for Day {
-    fn serialize<S>(
-        &self,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -35,16 +29,12 @@ impl serde::Serialize for Day {
     }
 }
 
-
-
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Day(i64);
 
 fn base() -> chrono::NaiveDate {
     chrono::NaiveDate::from_ymd(0, 1, 1)
 }
-
 
 impl str::FromStr for Day {
     type Err = crate::Error;
@@ -53,7 +43,6 @@ impl str::FromStr for Day {
         Ok(date.into())
     }
 }
-
 
 impl fmt::Display for Day {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

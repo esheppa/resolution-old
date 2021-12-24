@@ -1,12 +1,12 @@
 use any::TypeId;
-use chrono::Datelike;
+use chrono::{Date, Datelike};
 use serde::{
     de,
     ser::{self, SerializeStruct},
 };
-use std::{any, num, collections, convert::TryFrom, fmt, mem, hash};
+use std::{any, collections, convert::TryFrom, fmt, hash, mem, num};
 
-mod minutes; 
+mod minutes;
 pub use minutes::Minutes;
 
 pub type Minute = Minutes<1>;
@@ -26,7 +26,6 @@ pub use year::Year;
 mod week;
 // pub use week::Week;
 
-
 fn format_erased_resolution(tid: any::TypeId, val: i64) -> String {
     if tid == any::TypeId::of::<FiveMinute>() {
         format!("FiveMinute:{}", FiveMinute::from_monotonic(val))
@@ -43,8 +42,6 @@ fn format_erased_resolution(tid: any::TypeId, val: i64) -> String {
     }
 }
 
-
-
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Got new data for {point}: {new} different from data already in the cache {old}")]
@@ -58,15 +55,29 @@ pub enum Error {
     #[error("Error parsing date/time: {0}")]
     ParseDate(#[from] chrono::ParseError),
     #[error("Error parsing {ty_name} from input: {input}")]
-    ParseCustom { ty_name: &'static str, input: String },
+    ParseCustom {
+        ty_name: &'static str,
+        input: String,
+    },
     #[error("Time range cannot be created from an empty set of periods")]
     EmptyRange,
+    #[error("Unexpected input length for date {date}, got {actual} but needed {required}")]
+    UnexpectedStartDate {
+        date: chrono::NaiveDate,
+        required: &'static str,
+        actual: chrono::Weekday,
+    },
+    #[error("Unexpected input length for format {format}, got {actual} but needed {required}")]
+    UnexpectedInputLength {
+        required: usize,
+        actual: usize,
+        format: &'static str,
+    },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub trait TimeResolutionZone<Z: chrono::TimeZone>: TimeResolution 
-{
+pub trait TimeResolutionZone<Z: chrono::TimeZone>: TimeResolution {
     fn date_time(&self) -> chrono::DateTime<Z>;
     fn get_zone() -> Z;
 }
@@ -128,8 +139,9 @@ pub trait SubDateResolution: TimeResolution {
 // Due to this it can have a number of useful methods
 pub trait DateResolution: TimeResolution {
     fn start(&self) -> chrono::NaiveDate;
+}
 
-    // free
+pub trait DateResolutionExt: DateResolution {
     fn format<'a>(
         &self,
         fmt: &'a str,
@@ -143,29 +155,30 @@ pub trait DateResolution: TimeResolution {
         (self.end() - self.start()).num_days() + 1
     }
     fn to_sub_date_resolution<R: SubDateResolution>(&self) -> TimeRange<R> {
-        TimeRange::from_start_end(R::first_on_day(self.start()), R::last_on_day(self.end())).expect("Will always have at least one within the day")
+        TimeRange::from_start_end(R::first_on_day(self.start()), R::last_on_day(self.end()))
+            .expect("Will always have at least one within the day")
     }
-    fn days(&self) -> collections::BTreeSet<chrono::NaiveDate> {
-        (0..)
-            .map(|n| self.start() + chrono::Duration::days(n))
-            .filter(|d| d <= &self.end())
-            .collect()
-    }
-    fn business_days(
-        &self,
-        weekend: collections::HashSet<chrono::Weekday>,
-        holidays: collections::BTreeSet<chrono::NaiveDate>,
-    ) -> collections::BTreeSet<chrono::NaiveDate> {
-        let base_days = (0..)
-            .map(|n| self.start() + chrono::Duration::days(n))
-            .filter(|d| d <= &self.end())
-            .filter(|d| !weekend.contains(&d.weekday()))
-            .collect::<collections::BTreeSet<_>>();
-        base_days.difference(&holidays).copied().collect()
-    }
+    // fn days(&self) -> collections::BTreeSet<chrono::NaiveDate> {
+    //     (0..)
+    //         .map(|n| self.start() + chrono::Duration::days(n))
+    //         .filter(|d| d <= &self.end())
+    //         .collect()
+    // }
+    // fn business_days(
+    //     &self,
+    //     weekend: collections::HashSet<chrono::Weekday>,
+    //     holidays: collections::BTreeSet<chrono::NaiveDate>,
+    // ) -> collections::BTreeSet<chrono::NaiveDate> {
+    //     let base_days = (0..)
+    //         .map(|n| self.start() + chrono::Duration::days(n))
+    //         .filter(|d| d <= &self.end())
+    //         .filter(|d| !weekend.contains(&d.weekday()))
+    //         .collect::<collections::BTreeSet<_>>();
+    //     base_days.difference(&holidays).copied().collect()
+    // }
 }
 
-
+impl<T> DateResolutionExt for T where T: DateResolution {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize, Hash)]
 pub struct TimeRange<P: TimeResolution> {
@@ -196,45 +209,6 @@ impl<D: AsDateRange + TimeResolution> AsDateRange for TimeRange<D> {
     }
 }
 
-pub trait Rescale<Out: DateResolution> {
-    fn rescale(&self) -> TimeRange<Out>;
-}
-
-impl Rescale<Day> for Quarter {
-    fn rescale(&self) -> TimeRange<Day> {
-        todo!()
-    }
-}
-impl Rescale<Month> for Quarter {
-    fn rescale(&self) -> TimeRange<Month> {
-        todo!()
-    }
-}
-
-//impl<'de, P> serde::Deserialize<'de> for TimeRange<P>
-//where
-//    P: TimeResolution,
-//{
-//    fn deserialize<D>(deserializer: D) -> result::Result<TimeRange<P>, D::Error>
-//    where
-//        D: de::Deserializer<'de>,
-//    {
-//        todo!()
-//    }
-//}
-//
-//impl<P> serde::Serialize for TimeRange<P>
-//where
-//    P: TimeResolution,
-//{
-//    fn serialize<SER>(&self, serializer: SER) -> result::Result<SER::Ok, SER::Error>
-//    where
-//        SER: ser::Serializer,
-//    {
-//        todo!()
-//    }
-//}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeRangeComparison {
     Superset,
@@ -247,15 +221,15 @@ impl<P: SubDateResolution> TimeRange<P> {}
 
 impl<P: DateResolution> TimeRange<P> {
     pub fn to_sub_date_resolution<S: SubDateResolution>(&self) -> TimeRange<S> {
-         // get first start 
-         let first_start = S::first_on_day(self.start.start());
-         // get last end
-         let last_end = S::last_on_day(self.end().end());
-         // do from_start_end and expect it
-         TimeRange::from_start_end(first_start, last_end).expect("Original range is contigious so new will also be contigious")
+        // get first start
+        let first_start = S::first_on_day(self.start.start());
+        // get last end
+        let last_end = S::last_on_day(self.end().end());
+        // do from_start_end and expect it
+        TimeRange::from_start_end(first_start, last_end)
+            .expect("Original range is contigious so new will also be contigious")
     }
 }
-
 
 impl<P: TimeResolution> TimeRange<P> {
     // use with the cacheresponse!
@@ -263,7 +237,6 @@ impl<P: TimeResolution> TimeRange<P> {
         todo!()
     }
     pub fn from_map(map: collections::BTreeSet<i64>) -> Option<collections::HashSet<TimeRange<P>>> {
-
         if map.is_empty() {
             return None;
         }
@@ -271,14 +244,19 @@ impl<P: TimeResolution> TimeRange<P> {
         let mut iter = map.into_iter();
 
         let mut prev = iter.next()?;
-        let mut current_range = TimeRange { start: P::from_monotonic(prev), len: 1 };
+        let mut current_range = TimeRange {
+            start: P::from_monotonic(prev),
+            len: 1,
+        };
         let mut ranges = collections::HashSet::new();
         for val in iter {
-
             if val == prev + 1 {
                 current_range.len += 1;
             } else {
-                let mut old_range = TimeRange { start: P::from_monotonic(val), len: 1 };
+                let mut old_range = TimeRange {
+                    start: P::from_monotonic(val),
+                    len: 1,
+                };
                 mem::swap(&mut current_range, &mut old_range);
                 ranges.insert(old_range);
             }
@@ -298,8 +276,11 @@ impl<P: TimeResolution> TimeRange<P> {
     pub fn index_of(&self, point: P) -> Option<usize> {
         if point < self.start || point > self.end() {
             None
-        } else { 
-            Some(usize::try_from(self.start.between(point)).expect("Point is earlier than end so this is always ok"))
+        } else {
+            Some(
+                usize::try_from(self.start.between(point))
+                    .expect("Point is earlier than end so this is always ok"),
+            )
         }
     }
     pub fn from_start_end(start: P, end: P) -> Option<TimeRange<P>> {
@@ -453,4 +434,3 @@ impl<K: Ord + fmt::Debug + Copy, T: Send + fmt::Debug + Eq + Copy> Cache<K, T> {
         }
     }
 }
-

@@ -4,7 +4,7 @@ use serde::{
     de,
     ser::{self, SerializeStruct},
 };
-use std::{str, cmp, convert::TryFrom, fmt};
+use std::{cmp, convert::TryFrom, fmt, str};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Quarter(i64);
@@ -84,26 +84,22 @@ mod tests {
     }
 }
 
-impl<'de> de::Deserialize<'de> for Quarter 
-{
-    fn deserialize<D>(
-        deserializer: D,
-    ) -> std::result::Result<Quarter, D::Error>
+impl<'de> de::Deserialize<'de> for Quarter {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Quarter, D::Error>
     where
         D: de::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let date = chrono::NaiveDate::parse_from_str(&s, "Q%m-%Y")
-            .map_err(serde::de::Error::custom)?;
-        Ok(Quarter(i64::from(date.year()) * 4 + i64::try_from(date.month()).unwrap()))
+        let date =
+            chrono::NaiveDate::parse_from_str(&s, "Q%m-%Y").map_err(serde::de::Error::custom)?;
+        Ok(Quarter(
+            i64::from(date.year()) * 4 + i64::try_from(date.month()).unwrap(),
+        ))
     }
 }
 
 impl serde::Serialize for Quarter {
-    fn serialize<S>(
-        &self,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -118,16 +114,21 @@ impl str::FromStr for Quarter {
         if let Ok(parsed) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
             Ok(Quarter::from_date(parsed))
         } else {
-            let split = s.split('-').map(ToString::to_string).collect::<Vec<String>>();
+            let split = s
+                .split('-')
+                .map(ToString::to_string)
+                .collect::<Vec<String>>();
             if split.len() == 2 {
                 let qtr = split[0].parse::<u32>()?;
                 let year = split[1].parse()?;
                 let date = chrono::NaiveDate::from_ymd(year, qtr * 3 - 2, 1);
                 Ok(Quarter::from_date(date))
             } else {
-                Err(crate::Error::ParseCustom { ty_name: "Quarter", input: s.to_string() })
+                Err(crate::Error::ParseCustom {
+                    ty_name: "Quarter",
+                    input: s.to_string(),
+                })
             }
         }
     }
 }
-

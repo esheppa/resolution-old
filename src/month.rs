@@ -4,30 +4,24 @@ use serde::{
     de,
     ser::{self, SerializeStruct},
 };
-use std::{str, cmp, convert::TryFrom, fmt};
+use std::{cmp, convert::TryFrom, fmt, str};
 
 const DATE_FORMAT: &str = "%b-%Y";
 
-impl<'de> de::Deserialize<'de> for Month 
-{
-    fn deserialize<D>(
-        deserializer: D,
-    ) -> std::result::Result<Month, D::Error>
+impl<'de> de::Deserialize<'de> for Month {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Month, D::Error>
     where
         D: de::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let date = chrono::NaiveDate::parse_from_str(&s, DATE_FORMAT)
-            .map_err(serde::de::Error::custom)?;
+        let date =
+            chrono::NaiveDate::parse_from_str(&s, DATE_FORMAT).map_err(serde::de::Error::custom)?;
         Ok(Month::from_date(date))
     }
 }
 
 impl serde::Serialize for Month {
-    fn serialize<S>(
-        &self,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -36,7 +30,6 @@ impl serde::Serialize for Month {
     }
 }
 
-
 impl str::FromStr for Month {
     type Err = crate::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -44,8 +37,6 @@ impl str::FromStr for Month {
         Ok(Month::from_date(date))
     }
 }
-
-
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Month(i64); // number of months +- since 0AD

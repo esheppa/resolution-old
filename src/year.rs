@@ -3,10 +3,14 @@ use chrono::Datelike;
 use serde::{
     de,
     ser::{self, SerializeStruct},
+    Deserialize,
 };
-use std::{str, convert::TryFrom, fmt};
+use std::{convert::TryFrom, fmt, str};
 
-#[derive(Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord, Hash)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(transparent)]
 pub struct Year(i64);
 
 impl crate::DateResolution for Year {
@@ -72,31 +76,3 @@ impl str::FromStr for Year {
         Ok(Year(s.parse()?))
     }
 }
-
-
-impl<'de> de::Deserialize<'de> for Year 
-{
-    fn deserialize<D>(
-        deserializer: D,
-    ) -> std::result::Result<Year, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        let y = i64::deserialize(deserializer)?;
-        Ok(Year(y))
-    }
-}
-
-impl serde::Serialize for Year {
-    fn serialize<S>(
-        &self,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let s = self.to_string();
-        serializer.serialize_str(&s)
-    }
-}
-

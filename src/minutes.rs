@@ -23,8 +23,7 @@ impl<Z: chrono::TimeZone, const N: u32> PartialEq for MinutesZ<Z, N> {
         todo!()
     }
 }
-impl<Z: chrono::TimeZone, const N: u32> Eq for MinutesZ<Z, N> {
-}
+impl<Z: chrono::TimeZone, const N: u32> Eq for MinutesZ<Z, N> {}
 impl<Z: chrono::TimeZone, const N: u32> PartialOrd for MinutesZ<Z, N> {
     fn partial_cmp(&self, other: &MinutesZ<Z, N>) -> Option<cmp::Ordering> {
         todo!()
@@ -43,7 +42,6 @@ impl<Z: chrono::TimeZone, const N: u32> crate::TimeResolutionZone<Z> for Minutes
 }
 */
 
-
 #[derive(Clone, Copy, Debug)]
 pub struct MinutesTZ<const N: u32> {
     index: i64,
@@ -55,8 +53,7 @@ impl<const N: u32> PartialEq for MinutesTZ<N> {
         todo!()
     }
 }
-impl<const N: u32> Eq for MinutesTZ<N> {
-}
+impl<const N: u32> Eq for MinutesTZ<N> {}
 impl<const N: u32> PartialOrd for MinutesTZ<N> {
     fn partial_cmp(&self, other: &MinutesTZ<N>) -> Option<cmp::Ordering> {
         todo!()
@@ -68,13 +65,17 @@ impl<const N: u32> Ord for MinutesTZ<N> {
     }
 }
 
-
 impl<const N: u32> fmt::Display for Minutes<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if N == 1 {
             write!(f, "{}", self.naive_date_time())
         } else {
-            write!(f, "{} - {}", self.naive_date_time(), self.succ().naive_date_time())
+            write!(
+                f,
+                "{} - {}",
+                self.naive_date_time(),
+                self.succ().naive_date_time()
+            )
         }
     }
 }
@@ -84,10 +85,14 @@ impl<const N: u32> crate::TimeResolution for Minutes<N> {
         other.index - self.index
     }
     fn succ_n(&self, n: u32) -> Minutes<N> {
-        Minutes { index: self.index + i64::from(n)}
+        Minutes {
+            index: self.index + i64::from(n),
+        }
     }
     fn pred_n(&self, n: u32) -> Minutes<N> {
-        Minutes { index: self.index - i64::from(n)}
+        Minutes {
+            index: self.index - i64::from(n),
+        }
     }
     fn naive_date_time(&self) -> chrono::NaiveDateTime {
         chrono::NaiveDateTime::from_timestamp(self.index * NUM_SECS * i64::from(N), 0)
@@ -99,7 +104,7 @@ impl<const N: u32> crate::TimeResolution for Minutes<N> {
         Minutes { index }
     }
     fn name(&self) -> String {
-        format!("Minutes[{}]", N)
+        format!("Minutes[Length:{}]", N)
     }
 }
 
@@ -110,7 +115,7 @@ impl<const N: u32> crate::SubDateResolution for Minutes<N> {
         self.naive_date_time().date()
     }
     fn first_on_day(day: chrono::NaiveDate) -> Self {
-        Self::from_monotonic(day.and_hms(0, 0, 0).timestamp() / (i64::from(N)*NUM_SECS))
+        Self::from_monotonic(day.and_hms(0, 0, 0).timestamp() / (i64::from(N) * NUM_SECS))
     }
 }
 
