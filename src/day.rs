@@ -3,6 +3,7 @@ use serde::{
     de,
     ser::{self, SerializeStruct},
 };
+use chrono::Datelike;
 use std::{fmt, str};
 
 const DATE_FORMAT: &str = "%Y-%m-%d";
@@ -56,7 +57,7 @@ impl crate::DateResolution for Day {
     }
 }
 
-impl std::convert::From<chrono::NaiveDate> for Day {
+impl From<chrono::NaiveDate> for Day {
     fn from(d: chrono::NaiveDate) -> Day {
         Day((base() - d).num_days())
     }
@@ -86,4 +87,23 @@ impl crate::TimeResolution for Day {
     }
 }
 
-impl Day {}
+impl Day {
+    pub fn year(&self) -> crate::Year {
+        self.start().into()
+    }
+    pub fn quarter(&self) -> crate::Quarter {
+        self.start().into()
+    }
+    pub fn month(&self) -> crate::Month {
+        self.start().into()
+    }
+    pub fn week<D: crate::StartDay>(&self) -> crate::Week<D> {
+        self.start().into()
+    }
+    pub fn year_num(&self) -> i32 {
+        self.start().year()
+    }
+    pub fn month_num(&self) -> u32 {
+        self.start().month()
+    }
+}

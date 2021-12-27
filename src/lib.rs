@@ -24,13 +24,33 @@ mod year;
 pub use year::Year;
 
 mod week;
-// pub use week::Week;
+pub use week::{Week, StartDay};
 
-fn format_erased_resolution(tid: any::TypeId, val: i64) -> String {
-    if tid == any::TypeId::of::<FiveMinute>() {
-        format!("FiveMinute:{}", FiveMinute::from_monotonic(val))
+pub fn format_erased_resolution(handle_unknown: fn(any::TypeId, i64) -> String, tid: any::TypeId, val: i64) -> String {
+    if tid == any::TypeId::of::<Minute>() {
+        format!("Minute:{}", Minute::from_monotonic(val))
+    } else if tid == any::TypeId::of::<FiveMinute>() {
+        format!("FiveMinute:{}", FiveMinute::from_monotonic(val))   
+    } else if tid == any::TypeId::of::<HalfHour>() {
+        format!("HalfHour:{}", HalfHour::from_monotonic(val))    
+    } else if tid == any::TypeId::of::<Hour>() {
+        format!("Hour:{}", Hour::from_monotonic(val))   
     } else if tid == any::TypeId::of::<Day>() {
-        format!("Date:{}", Day::from_monotonic(val))
+        format!("Day:{}", Day::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Week<week::Monday>>() {
+        format!("Week:{}", Week::<week::Monday>::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Week<week::Tuesday>>() {
+        format!("Week:{}", Week::<week::Tuesday>::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Week<week::Wednesday>>() {
+        format!("Week:{}", Week::<week::Wednesday>::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Week<week::Thursday>>() {
+        format!("Week:{}", Week::<week::Thursday>::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Week<week::Friday>>() {
+        format!("Week:{}", Week::<week::Friday>::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Week<week::Saturday>>() {
+        format!("Week:{}", Week::<week::Saturday>::from_monotonic(val))
+    } else if tid == any::TypeId::of::<Week<week::Sunday>>() {
+        format!("Week:{}", Week::<week::Sunday>::from_monotonic(val))
     } else if tid == any::TypeId::of::<Month>() {
         format!("Month:{}", Month::from_monotonic(val))
     } else if tid == any::TypeId::of::<Quarter>() {
@@ -38,7 +58,7 @@ fn format_erased_resolution(tid: any::TypeId, val: i64) -> String {
     } else if tid == any::TypeId::of::<Year>() {
         format!("Year:{}", Year::from_monotonic(val))
     } else {
-        panic!("Unhandled dateresolution type")
+        handle_unknown(tid, val)
     }
 }
 
@@ -137,9 +157,10 @@ pub trait SubDateResolution: TimeResolution {
 // This trait exists to be able to provide a trait
 // bound for resolutiopns that are one day long or longer.
 // Due to this it can have a number of useful methods
-pub trait DateResolution: TimeResolution {
+pub trait DateResolution: TimeResolution + From<chrono::NaiveDate> {
     fn start(&self) -> chrono::NaiveDate;
 }
+
 
 pub trait DateResolutionExt: DateResolution {
     fn format<'a>(

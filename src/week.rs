@@ -212,6 +212,14 @@ impl<D: StartDay> crate::TimeResolution for Week<D> {
     }
 }
 
+
+impl<D: StartDay> From<chrono::NaiveDate> for Week<D> {
+    fn from(d: chrono::NaiveDate) -> Self {
+        todo!()
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

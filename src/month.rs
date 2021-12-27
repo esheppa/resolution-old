@@ -16,7 +16,7 @@ impl<'de> de::Deserialize<'de> for Month {
         let s = String::deserialize(deserializer)?;
         let date =
             chrono::NaiveDate::parse_from_str(&s, DATE_FORMAT).map_err(serde::de::Error::custom)?;
-        Ok(Month::from_date(date))
+        Ok(date.into())
     }
 }
 
@@ -30,11 +30,36 @@ impl serde::Serialize for Month {
     }
 }
 
+fn month_num_from_name(name: &str) -> Result<u32, crate::Error> {
+    let num = match name {
+        "Jan" => 1,
+        "Feb" => 2,
+        "Mar" => 3,
+        "Apr" => 4,
+        "May" => 5,
+        "Jun" => 6,
+        "Jul" => 7,
+        "Aug" => 8,
+        "Sep" => 9,
+        "Oct" => 10,
+        "Nov" => 11,
+        "Dec" => 12,
+        n => return Err(crate::Error::ParseCustom {
+            ty_name: "Month",
+            input: format!("Unknown month name `{}`", n),
+        }),
+    };
+    Ok(num)
+}
+
 impl str::FromStr for Month {
     type Err = crate::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let date = chrono::NaiveDate::parse_from_str(s, DATE_FORMAT)?;
-        Ok(Month::from_date(date))
+        let mut split = s.split("-");
+        let month = month_num_from_name(split.next().ok_or_else(|| crate::Error::ParseCustom { ty_name: "Month", input: s.to_string() })?)?;
+        let year = split.next().ok_or_else(|| crate::Error::ParseCustom { ty_name: "Month", input: s.to_string() })?.parse()?;
+        let date = chrono::NaiveDate::from_ymd(year, month, 1);
+        Ok(date.into())
     }
 }
 
@@ -70,17 +95,22 @@ impl crate::DateResolution for Month {
     fn start(&self) -> chrono::NaiveDate {
         let years = i32::try_from(self.0.div_euclid(12)).expect("Not pre/post historic");
         let months = u32::try_from(1 + self.0.rem_euclid(12)).unwrap();
-        dbg!(months);
         chrono::NaiveDate::from_ymd(years, months, 1)
     }
 }
 
-impl Month {
-    pub fn year(&self) -> year::Year {
-        year::Year::from_date(self.start())
+impl From<chrono::NaiveDate> for Month {
+    fn from(d: chrono::NaiveDate) -> Self {
+        Month(i64::from(d.month0()) + i64::from(d.year()) * 12)
     }
-    pub fn quarter(&self) -> quarter::Quarter {
-        quarter::Quarter::from_date(self.start())
+}
+
+impl Month {
+    pub fn year(&self) -> crate::Year {
+        self.start().into()
+    }
+    pub fn quarter(&self) -> crate::Quarter {
+        self.start().into()
     }
     pub fn year_num(&self) -> i32 {
         self.start().year()
@@ -88,21 +118,34 @@ impl Month {
     pub fn month_num(&self) -> u32 {
         self.start().month()
     }
-    pub fn from_date(d: chrono::NaiveDate) -> Self {
-        todo!()
-    }
 }
 
 impl fmt::Display for Month {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.start().format("%b-%Y"))
+        write!(f, "{}", self.start().format(DATE_FORMAT))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Month;
-    use crate::DateResolution;
+    use crate::{DateResolution, TimeResolution};
+
+    #[test]
+    fn test_parse() {
+        assert_eq!(
+            "Jan-2021".parse::<Month>().unwrap().start(),
+            chrono::NaiveDate::from_ymd(2021, 1, 1),
+        );
+        assert_eq!(
+            "Jan-2021".parse::<Month>().unwrap().succ().start(),
+            chrono::NaiveDate::from_ymd(2021, 2, 1),
+        );
+        assert_eq!(
+            "Jan-2021".parse::<Month>().unwrap().succ().pred().start(),
+            chrono::NaiveDate::from_ymd(2021, 1, 1),
+        );
+    }
 
     #[test]
     fn test_start() {
