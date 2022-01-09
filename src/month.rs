@@ -1,10 +1,7 @@
-use crate::{quarter, year, DateResolution};
+use crate::DateResolution;
 use chrono::Datelike;
-use serde::{
-    de,
-    ser::{self, SerializeStruct},
-};
-use std::{cmp, convert::TryFrom, fmt, str};
+use serde::de;
+use std::{convert::TryFrom, fmt, str};
 
 const DATE_FORMAT: &str = "%b-%Y";
 
@@ -44,10 +41,12 @@ fn month_num_from_name(name: &str) -> Result<u32, crate::Error> {
         "Oct" => 10,
         "Nov" => 11,
         "Dec" => 12,
-        n => return Err(crate::Error::ParseCustom {
-            ty_name: "Month",
-            input: format!("Unknown month name `{}`", n),
-        }),
+        n => {
+            return Err(crate::Error::ParseCustom {
+                ty_name: "Month",
+                input: format!("Unknown month name `{}`", n),
+            })
+        }
     };
     Ok(num)
 }
@@ -56,8 +55,18 @@ impl str::FromStr for Month {
     type Err = crate::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut split = s.split("-");
-        let month = month_num_from_name(split.next().ok_or_else(|| crate::Error::ParseCustom { ty_name: "Month", input: s.to_string() })?)?;
-        let year = split.next().ok_or_else(|| crate::Error::ParseCustom { ty_name: "Month", input: s.to_string() })?.parse()?;
+        let month =
+            month_num_from_name(split.next().ok_or_else(|| crate::Error::ParseCustom {
+                ty_name: "Month",
+                input: s.to_string(),
+            })?)?;
+        let year = split
+            .next()
+            .ok_or_else(|| crate::Error::ParseCustom {
+                ty_name: "Month",
+                input: s.to_string(),
+            })?
+            .parse()?;
         let date = chrono::NaiveDate::from_ymd(year, month, 1);
         Ok(date.into())
     }
@@ -105,6 +114,12 @@ impl From<chrono::NaiveDate> for Month {
     }
 }
 
+impl From<chrono::NaiveDateTime> for Month {
+    fn from(d: chrono::NaiveDateTime) -> Self {
+        d.date().into()
+    }
+}
+
 impl Month {
     pub fn year(&self) -> crate::Year {
         self.start().into()
@@ -129,7 +144,15 @@ impl fmt::Display for Month {
 #[cfg(test)]
 mod tests {
     use super::Month;
-    use crate::{DateResolution, TimeResolution};
+    use crate::{DateResolution, DateResolutionExt, TimeResolution};
+
+    #[test]
+    fn test_roundtrip() {
+        let dt = chrono::NaiveDate::from_ymd(2021, 12, 6);
+
+        let wk = Month::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+    }
 
     #[test]
     fn test_parse() {

@@ -1,9 +1,6 @@
 use crate::DateResolution;
-use serde::{
-    de,
-    ser::{self, SerializeStruct},
-};
 use chrono::Datelike;
+use serde::de;
 use std::{fmt, str};
 
 const DATE_FORMAT: &str = "%Y-%m-%d";
@@ -59,7 +56,13 @@ impl crate::DateResolution for Day {
 
 impl From<chrono::NaiveDate> for Day {
     fn from(d: chrono::NaiveDate) -> Day {
-        Day((base() - d).num_days())
+        Day((d - base()).num_days())
+    }
+}
+
+impl From<chrono::NaiveDateTime> for Day {
+    fn from(d: chrono::NaiveDateTime) -> Self {
+        d.date().into()
     }
 }
 
@@ -105,5 +108,44 @@ impl Day {
     }
     pub fn month_num(&self) -> u32 {
         self.start().month()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{DateResolution, DateResolutionExt, TimeResolution};
+
+    #[test]
+    fn test_roundtrip() {
+        let dt = chrono::NaiveDate::from_ymd(2021, 12, 6);
+
+        let wk = Day::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+    }
+
+    #[test]
+    fn test_parse_date_syntax() {
+        assert_eq!(
+            "2021-01-01".parse::<Day>().unwrap().start(),
+            chrono::NaiveDate::from_ymd(2021, 1, 1),
+        );
+        assert_eq!(
+            "2021-01-01".parse::<Day>().unwrap().succ().start(),
+            chrono::NaiveDate::from_ymd(2021, 1, 2),
+        );
+        assert_eq!(
+            "2021-01-01".parse::<Day>().unwrap().succ().pred().start(),
+            chrono::NaiveDate::from_ymd(2021, 1, 1),
+        );
+    }
+
+    #[test]
+    fn test_start() {
+        assert_eq!(Day(2).start(), chrono::NaiveDate::from_ymd(0, 1, 3));
+        assert_eq!(Day(1).start(), chrono::NaiveDate::from_ymd(0, 1, 2));
+        assert_eq!(Day(0).start(), chrono::NaiveDate::from_ymd(0, 1, 1));
+        assert_eq!(Day(-1).start(), chrono::NaiveDate::from_ymd(-1, 12, 31));
+        assert_eq!(Day(-2).start(), chrono::NaiveDate::from_ymd(-1, 12, 30));
     }
 }

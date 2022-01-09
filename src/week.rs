@@ -159,24 +159,15 @@ impl<D: StartDay> str::FromStr for Week<D> {
             });
         }
         let date = chrono::NaiveDate::parse_from_str(&s[14..24], "%Y-%m-%d")?;
-        match (date.weekday(), D::NAME) {
-            (chrono::Weekday::Mon, "Monday") => {}
-            (chrono::Weekday::Tue, "Tuesday") => {}
-            (chrono::Weekday::Wed, "Wednesday") => {}
-            (chrono::Weekday::Thu, "Thursday") => {}
-            (chrono::Weekday::Fri, "Friday") => {}
-            (chrono::Weekday::Sat, "Saturday") => {}
-            (chrono::Weekday::Sun, "Sunday") => {}
-            (parsed_day, required_day) => {
-                return Err(crate::Error::UnexpectedStartDate {
-                    date,
-                    actual: parsed_day,
-                    required: required_day,
-                })
-            }
+        if date.weekday() != D::weekday() {
+            return Err(crate::Error::UnexpectedStartDate {
+                date,
+                actual: date.weekday(),
+                required: D::weekday(),
+            });
         };
 
-        let week_num = (date - base(date.weekday())).num_days() / 7;
+        let week_num = (date - base(D::weekday())).num_days() / 7;
 
         Ok(Week::new(week_num))
     }
@@ -212,19 +203,50 @@ impl<D: StartDay> crate::TimeResolution for Week<D> {
     }
 }
 
-
 impl<D: StartDay> From<chrono::NaiveDate> for Week<D> {
-    fn from(d: chrono::NaiveDate) -> Self {
-        todo!()
+    fn from(date: chrono::NaiveDate) -> Self {
+        let week_num = (date - base(D::weekday())).num_days() / 7;
+
+        Week::new(week_num)
     }
 }
 
+impl<D: StartDay> From<chrono::NaiveDateTime> for Week<D> {
+    fn from(date: chrono::NaiveDateTime) -> Self {
+        date.date().into()
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{DateResolution, TimeResolution};
+    use crate::{DateResolution, DateResolutionExt, TimeResolution};
 
+    #[test]
+    fn test_roundtrip() {
+        let dt = chrono::NaiveDate::from_ymd(2021, 12, 6);
+
+        let wk = Week::<Monday>::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+
+        let wk = Week::<Tuesday>::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+
+        let wk = Week::<Wednesday>::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+
+        let wk = Week::<Thursday>::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+
+        let wk = Week::<Friday>::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+
+        let wk = Week::<Saturday>::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+
+        let wk = Week::<Sunday>::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+    }
     #[test]
     fn test_parse() {
         assert_eq!(

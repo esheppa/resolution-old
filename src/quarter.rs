@@ -1,10 +1,7 @@
 use crate::{month, year, DateResolution, DateResolutionExt};
 use chrono::Datelike;
-use serde::{
-    de,
-    ser::{self, SerializeStruct},
-};
-use std::{cmp, convert::TryFrom, fmt, str};
+use serde::de;
+use std::{convert::TryFrom, fmt, str};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Quarter(i64);
@@ -33,7 +30,6 @@ impl crate::TimeResolution for Quarter {
     }
 }
 
-
 impl crate::DateResolution for Quarter {
     fn start(&self) -> chrono::NaiveDate {
         let years = i32::try_from(self.0.div_euclid(4)).expect("Not pre/post historic");
@@ -52,11 +48,15 @@ fn quarter_num(d: chrono::NaiveDate) -> i64 {
     }
 }
 
-
-
 impl From<chrono::NaiveDate> for Quarter {
     fn from(d: chrono::NaiveDate) -> Self {
         Quarter(quarter_num(d) - 1 + i64::from(d.year()) * 4)
+    }
+}
+
+impl From<chrono::NaiveDateTime> for Quarter {
+    fn from(d: chrono::NaiveDateTime) -> Self {
+        d.date().into()
     }
 }
 
@@ -93,6 +93,13 @@ mod tests {
     use super::*;
     use crate::{DateResolution, TimeResolution};
 
+    #[test]
+    fn test_roundtrip() {
+        let dt = chrono::NaiveDate::from_ymd(2021, 12, 6);
+
+        let wk = Quarter::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+    }
     #[test]
     fn test_parse_quarter_syntax() {
         assert_eq!(

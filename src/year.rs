@@ -1,10 +1,5 @@
-use crate::{month, year, DateResolution, DateResolutionExt};
+use crate::{month, DateResolution, DateResolutionExt};
 use chrono::Datelike;
-use serde::{
-    de,
-    ser::{self, SerializeStruct},
-    Deserialize,
-};
 use std::{convert::TryFrom, fmt, str};
 
 #[derive(
@@ -43,10 +38,15 @@ impl crate::TimeResolution for Year {
     }
 }
 
-
 impl From<chrono::NaiveDate> for Year {
     fn from(d: chrono::NaiveDate) -> Self {
         Year(i64::from(d.year()))
+    }
+}
+
+impl From<chrono::NaiveDateTime> for Year {
+    fn from(d: chrono::NaiveDateTime) -> Self {
+        d.date().into()
     }
 }
 
@@ -88,6 +88,14 @@ impl str::FromStr for Year {
 mod tests {
     use super::*;
     use crate::{DateResolution, TimeResolution};
+
+    #[test]
+    fn test_roundtrip() {
+        let dt = chrono::NaiveDate::from_ymd(2021, 12, 6);
+
+        let wk = Year::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+    }
 
     #[test]
     fn test_parse() {
