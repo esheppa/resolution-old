@@ -8,7 +8,6 @@ edition = "2021"
 
 [dependencies]
 log = "0.4"
-chrono-tz = "0.5"
 thiserror = "1"
 
 [dependencies.serde]

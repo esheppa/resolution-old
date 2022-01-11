@@ -16,7 +16,7 @@ impl crate::DateResolution for Year {
 
 impl crate::TimeResolution for Year {
     fn between(&self, other: Self) -> i64 {
-        i64::from(other.0 - self.0)
+        other.0 - self.0
     }
     fn succ_n(&self, n: u32) -> Year {
         Year(self.0 + i64::from(n))

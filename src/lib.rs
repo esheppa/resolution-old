@@ -1,6 +1,10 @@
 use serde::de;
 use std::{any, fmt, hash, num};
 
+// #TODO
+// mod minutes_zone;
+// pub use minutes_zone::MinutesZ;
+
 mod minutes;
 pub use minutes::Minutes;
 
@@ -18,8 +22,7 @@ pub use quarter::Quarter;
 mod year;
 pub use year::Year;
 
-mod range;
-pub use range::TimeRange;
+pub mod range;
 
 mod week;
 pub use week::{StartDay, Week};
@@ -189,9 +192,13 @@ pub trait DateResolutionExt: DateResolution {
     fn num_days(&self) -> i64 {
         (self.end() - self.start()).num_days() + 1
     }
-    fn to_sub_date_resolution<R: SubDateResolution>(&self) -> TimeRange<R> {
-        TimeRange::from_start_end(R::first_on_day(self.start()), R::last_on_day(self.end()))
+    fn to_sub_date_resolution<R: SubDateResolution>(&self) -> range::TimeRange<R> {
+        range::TimeRange::from_start_end(R::first_on_day(self.start()), R::last_on_day(self.end()))
             .expect("Will always have at least one within the day")
+    }
+    fn rescale<R: DateResolution>(&self) -> range::TimeRange<R> {
+        range::TimeRange::from_start_end(self.start().into(), self.end().into())
+            .expect("Will always have at least one day")
     }
     // fn days(&self) -> collections::BTreeSet<chrono::NaiveDate> {
     //     (0..)

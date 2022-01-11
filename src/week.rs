@@ -181,7 +181,7 @@ impl<D: StartDay> crate::DateResolution for Week<D> {
 
 impl<D: StartDay> crate::TimeResolution for Week<D> {
     fn between(&self, other: Self) -> i64 {
-        i64::from(other.n - self.n)
+        other.n - self.n
     }
     fn succ_n(&self, n: u32) -> Week<D> {
         Week::new(self.n + i64::from(n))

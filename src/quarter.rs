@@ -8,7 +8,7 @@ pub struct Quarter(i64);
 
 impl crate::TimeResolution for Quarter {
     fn between(&self, other: Self) -> i64 {
-        i64::from(other.0 - self.0)
+        other.0 - self.0
     }
     fn succ_n(&self, n: u32) -> Self {
         Quarter(self.0 + i64::from(n))
@@ -184,8 +184,7 @@ impl str::FromStr for Quarter {
             if split.len() == 2 {
                 let qtr = split[0]
                     .chars()
-                    .skip(1)
-                    .next()
+                    .nth(1)
                     .unwrap()
                     .to_string()
                     .parse::<u32>()?;

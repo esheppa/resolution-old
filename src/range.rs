@@ -9,28 +9,6 @@ pub struct TimeRange<P: TimeResolution> {
     len: u32,
 }
 
-pub trait AsDateRange {
-    fn as_date_range(&self) -> TimeRange<crate::Day>;
-}
-pub trait AsMonthRange {
-    fn as_month_range(&self) -> TimeRange<crate::Month>;
-}
-pub trait AsQuarterRange {
-    fn as_quarter_range(&self) -> TimeRange<crate::Quarter>;
-}
-
-impl AsDateRange for crate::Quarter {
-    fn as_date_range(&self) -> TimeRange<crate::Day> {
-        todo!()
-    }
-}
-
-impl<D: AsDateRange + TimeResolution> AsDateRange for TimeRange<D> {
-    fn as_date_range(&self) -> TimeRange<crate::Day> {
-        todo!()
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeRangeComparison {
     Superset,

@@ -54,7 +54,7 @@ fn month_num_from_name(name: &str) -> Result<u32, crate::Error> {
 impl str::FromStr for Month {
     type Err = crate::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut split = s.split("-");
+        let mut split = s.split('-');
         let month =
             month_num_from_name(split.next().ok_or_else(|| crate::Error::ParseCustom {
                 ty_name: "Month",
@@ -77,7 +77,7 @@ pub struct Month(i64); // number of months +- since 0AD
 
 impl crate::TimeResolution for Month {
     fn between(&self, other: Self) -> i64 {
-        i64::from(other.0 - self.0)
+        other.0 - self.0
     }
     fn succ_n(&self, n: u32) -> Self {
         Month(self.0 + i64::from(n))
