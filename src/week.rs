@@ -271,7 +271,7 @@ mod tests {
                 .succ()
                 .pred()
                 .start(),
-            chrono::NaiveDate::from_ymd(2021, 12, 06),
+            chrono::NaiveDate::from_ymd(2021, 12, 6),
         );
 
         assert!("Week starting 2021-12-06".parse::<Week<Tuesday>>().is_err(),);

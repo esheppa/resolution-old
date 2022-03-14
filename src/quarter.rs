@@ -80,11 +80,7 @@ impl Quarter {
 
 impl fmt::Display for Quarter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            format!("Q{}-{}", self.quarter_num(), self.year_num())
-        )
+        write!(f, "Q{}-{}", self.quarter_num(), self.year_num())
     }
 }
 

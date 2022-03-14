@@ -1,12 +1,12 @@
 use crate::{DateResolution, DateResolutionExt, SubDateResolution, TimeResolution};
 use serde::de;
-use std::{collections, fmt, mem};
+use std::{collections, fmt, mem, num};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize, Hash)]
 pub struct TimeRange<P: TimeResolution> {
     #[serde(bound(deserialize = "P: de::DeserializeOwned"))]
     start: P,
-    len: u32,
+    len: num::NonZeroU32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,10 +32,6 @@ impl<P: DateResolution> TimeRange<P> {
 }
 
 impl<P: TimeResolution> TimeRange<P> {
-    // use with the cacheresponse!
-    pub fn from_indexes(idx: &[i64]) -> crate::Result<TimeRange<P>> {
-        todo!()
-    }
     pub fn from_map(map: collections::BTreeSet<i64>) -> Option<collections::HashSet<TimeRange<P>>> {
         if map.is_empty() {
             return None;
@@ -46,16 +42,17 @@ impl<P: TimeResolution> TimeRange<P> {
         let mut prev = iter.next()?;
         let mut current_range = TimeRange {
             start: P::from_monotonic(prev),
-            len: 1,
+            len: num::NonZeroU32::new(1).unwrap(),
         };
         let mut ranges = collections::HashSet::new();
         for val in iter {
             if val == prev + 1 {
-                current_range.len += 1;
+                current_range.len =
+                    num::NonZeroU32::new(current_range.len.get().saturating_add(1)).unwrap();
             } else {
                 let mut old_range = TimeRange {
                     start: P::from_monotonic(val),
-                    len: 1,
+                    len: num::NonZeroU32::new(1).unwrap(),
                 };
                 mem::swap(&mut current_range, &mut old_range);
                 ranges.insert(old_range);
@@ -70,7 +67,13 @@ impl<P: TimeResolution> TimeRange<P> {
         self.iter().map(|p| p.to_monotonic()).collect()
     }
 
-    pub fn new(start: P, len: u32) -> TimeRange<P> {
+    pub fn maybe_new(start: P, len: u32) -> Option<TimeRange<P>> {
+        Some(TimeRange {
+            start,
+            len: num::NonZeroU32::new(len)?,
+        })
+    }
+    pub fn new(start: P, len: num::NonZeroU32) -> TimeRange<P> {
         TimeRange { start, len }
     }
     pub fn index_of(&self, point: P) -> Option<usize> {
@@ -87,24 +90,24 @@ impl<P: TimeResolution> TimeRange<P> {
         if start <= end {
             Some(TimeRange {
                 start,
-                len: 1 + u32::try_from(start.between(end))
-                    .expect("Start is earlier than End so difference is positive"),
+                len: num::NonZeroU32::new(1 + u32::try_from(start.between(end)).ok()?).unwrap(),
             })
         } else {
             None
         }
     }
-    pub fn len(&self) -> usize {
-        usize::try_from(self.len).unwrap()
+
+    pub fn len(&self) -> num::NonZeroU32 {
+        self.len
     }
 
-    pub fn intersect(&self, other: TimeRange<P>) -> Option<TimeRange<P>> {
+    pub fn intersect(&self, other: &TimeRange<P>) -> Option<TimeRange<P>> {
         let max_start = self.start().max(other.start());
         let min_end = self.end().min(other.end());
         TimeRange::from_start_end(max_start, min_end)
     }
-    pub fn union(&self, other: TimeRange<P>) -> Option<TimeRange<P>> {
-        if let Some(_) = self.intersect(other) {
+    pub fn union(&self, other: &TimeRange<P>) -> Option<TimeRange<P>> {
+        if self.intersect(other).is_some() {
             let min_start = self.start().min(other.start());
             let max_end = self.end().max(other.end());
             TimeRange::from_start_end(min_start, max_end)
@@ -113,11 +116,14 @@ impl<P: TimeResolution> TimeRange<P> {
         }
     }
 
-    pub fn difference(&self, other: TimeRange<P>) -> (Option<TimeRange<P>>, Option<TimeRange<P>>) {
-        todo!()
+    pub fn subtract(&self, other: &TimeRange<P>) -> (Option<TimeRange<P>>, Option<TimeRange<P>>) {
+        (
+            TimeRange::from_start_end(self.start(), other.start().pred().min(self.end())),
+            TimeRange::from_start_end(other.end().succ().max(self.start()), self.end()),
+        )
     }
-    pub fn compare(&self, other: TimeRange<P>) -> TimeRangeComparison {
-        match self.difference(other) {
+    pub fn compare(&self, other: &TimeRange<P>) -> TimeRangeComparison {
+        match self.subtract(other) {
             (Some(_), Some(_)) => TimeRangeComparison::Superset,
             (Some(_), None) => TimeRangeComparison::Earlier,
             (None, Some(_)) => TimeRangeComparison::Later,
@@ -133,14 +139,14 @@ impl<P: TimeResolution> TimeRange<P> {
         }
         Some(TimeRange {
             start: set.iter().next().copied()?,
-            len: u32::try_from(set.len()).ok()?,
+            len: num::NonZeroU32::new(u32::try_from(set.len()).ok()?)?,
         })
     }
     pub fn start(&self) -> P {
         self.start
     }
     pub fn end(&self) -> P {
-        self.start.succ_n(self.len)
+        self.start.succ_n(self.len.get())
     }
     pub fn set(&self) -> collections::BTreeSet<P> {
         self.iter().collect()
@@ -162,7 +168,7 @@ impl<P: TimeResolution> Iterator for TimeRangeIter<P> {
     type Item = P;
     fn next(&mut self) -> Option<Self::Item> {
         if self.current <= self.end {
-            let ret = self.current.clone();
+            let ret = self.current;
             self.current = self.current.succ();
             Some(ret)
         } else {
@@ -180,10 +186,51 @@ pub struct Cache<K: Ord + fmt::Debug + Copy, T: Send + fmt::Debug + Eq + Copy> {
 
 // merge a request into a set of requests, grouping contigious on the way
 fn missing_pieces<K: Ord + fmt::Debug + Copy>(
-    _request: collections::BTreeSet<K>,
-    _requests: &collections::BTreeSet<K>,
+    request: collections::BTreeSet<K>,
+    requests: &collections::BTreeSet<K>,
 ) -> Vec<collections::BTreeSet<K>> {
-    todo!()
+    let mut to_request = Vec::new();
+    let mut current_request = collections::BTreeSet::new();
+
+    // there is a fundamental assumption that `request` is contigious
+    // as long as `request` is contigious, each of the returned requests
+    // will also be contigious
+    // there is no need to worry about filling gaps to reduce the total number
+    // of requests - the consumer will handle this
+    for requested in request {
+        if !requests.contains(&requested) {
+            current_request.insert(dbg!(requested));
+        } else if !current_request.is_empty() {
+            to_request.push(mem::take(&mut current_request));
+        }
+    }
+
+    if !current_request.is_empty() {
+        to_request.push(current_request);
+    }
+
+    to_request
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_missing_pieces() {
+        let pieces = missing_pieces(
+            collections::BTreeSet::from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            &collections::BTreeSet::from([2, 3, 7, 8]),
+        );
+        assert_eq!(
+            pieces,
+            Vec::from([
+                collections::BTreeSet::from([1]),
+                collections::BTreeSet::from([4, 5, 6]),
+                collections::BTreeSet::from([9, 10]),
+            ])
+        )
+    }
 }
 
 // No concept of partial, becuse we will simply request the missing data, then ask the cache again.

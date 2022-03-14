@@ -7,15 +7,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-log = "0.4"
-thiserror = "1"
+log = "0.4.14"
+thiserror = "1.0.30"
 
 [dependencies.serde]
-version = "1"
+version = "1.0.136"
 features = ["derive"]
 
 [dependencies.chrono]
-version = "0.4"
+version = "0.4.19"
 # avoid the "clock" feature
 default-features = false
 features = ["serde", "std"]
