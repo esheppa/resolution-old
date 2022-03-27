@@ -1,4 +1,5 @@
 use crate::{TimeResolution, TimeResolutionZone};
+#[cfg(with_serde)]
 use serde::{de, ser};
 use std::{cmp, fmt, hash, str};
 
@@ -144,6 +145,7 @@ where
     }
 }
 
+#[cfg(with_serde)]
 impl<'de, Z, const N: u32> serde::Deserialize<'de> for MinutesZ<Z, N>
 where
     Z: crate::TimeZone,
@@ -156,6 +158,7 @@ where
     }
 }
 
+#[cfg(with_serde)]
 impl<Z, const N: u32> serde::Serialize for MinutesZ<Z, N>
 where
     Z: crate::TimeZone,

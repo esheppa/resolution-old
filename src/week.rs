@@ -88,7 +88,7 @@ impl StartDay for Sunday {
         chrono::Weekday::Sun
     }
 }
-
+#[cfg(with_serde)]
 #[derive(
     Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord, Hash, serde::Deserialize, serde::Serialize,
 )]
@@ -98,6 +98,14 @@ pub struct Week<D: StartDay> {
     d: marker::PhantomData<D>,
 }
 
+#[cfg(not(with_serde))]
+#[derive(Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord, Hash)]
+pub struct Week<D: StartDay> {
+    n: i64,
+    d: marker::PhantomData<D>,
+}
+
+#[cfg(with_serde)]
 impl<D: StartDay> TryFrom<Week_> for Week<D> {
     type Error = String;
     fn try_from(value: Week_) -> Result<Self, Self::Error> {
@@ -114,6 +122,7 @@ impl<D: StartDay> TryFrom<Week_> for Week<D> {
     }
 }
 
+#[cfg(with_serde)]
 impl<D: StartDay> From<Week<D>> for Week_ {
     fn from(w: Week<D>) -> Self {
         Week_ {
@@ -123,6 +132,7 @@ impl<D: StartDay> From<Week<D>> for Week_ {
     }
 }
 
+#[cfg(with_serde)]
 #[derive(serde::Deserialize, serde::Serialize)]
 struct Week_ {
     n: i64,

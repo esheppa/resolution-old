@@ -1,10 +1,19 @@
 use crate::{DateResolution, DateResolutionExt, SubDateResolution, TimeResolution};
+#[cfg(with_serde)]
 use serde::de;
 use std::{collections, fmt, mem, num};
 
+#[cfg(with_serde)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize, Hash)]
 pub struct TimeRange<P: TimeResolution> {
     #[serde(bound(deserialize = "P: de::DeserializeOwned"))]
+    start: P,
+    len: num::NonZeroU32,
+}
+
+#[cfg(not(with_serde))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TimeRange<P: TimeResolution> {
     start: P,
     len: num::NonZeroU32,
 }

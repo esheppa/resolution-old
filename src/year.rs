@@ -2,10 +2,15 @@ use crate::{month, DateResolution, DateResolutionExt};
 use chrono::Datelike;
 use std::{convert::TryFrom, fmt, str};
 
+#[cfg(with_serde)]
 #[derive(
     Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 #[serde(transparent)]
+pub struct Year(i64);
+
+#[cfg(not(with_serde))]
+#[derive(Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord, Hash)]
 pub struct Year(i64);
 
 impl crate::DateResolution for Year {

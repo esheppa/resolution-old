@@ -1,10 +1,12 @@
 use crate::DateResolution;
 use chrono::Datelike;
+#[cfg(with_serde)]
 use serde::de;
 use std::{convert::TryFrom, fmt, str};
 
 const DATE_FORMAT: &str = "%b-%Y";
 
+#[cfg(with_serde)]
 impl<'de> de::Deserialize<'de> for Month {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Month, D::Error>
     where
@@ -17,6 +19,7 @@ impl<'de> de::Deserialize<'de> for Month {
     }
 }
 
+#[cfg(with_serde)]
 impl serde::Serialize for Month {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -100,7 +103,6 @@ impl crate::TimeResolution for Month {
 }
 
 impl crate::DateResolution for Month {
-    // TODO: Fix??
     fn start(&self) -> chrono::NaiveDate {
         let years = i32::try_from(self.0.div_euclid(12)).expect("Not pre/post historic");
         let months = u32::try_from(1 + self.0.rem_euclid(12)).unwrap();
@@ -152,6 +154,12 @@ mod tests {
 
         let wk = Month::from(dt);
         assert!(wk.start() <= dt && wk.end() >= dt);
+
+        let dt = chrono::NaiveDate::from_ymd(2019, 7, 1);
+
+        let m2 = Month::from(dt);
+
+        assert!(m2.start() == dt)
     }
 
     #[test]

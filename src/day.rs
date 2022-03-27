@@ -1,10 +1,12 @@
 use crate::DateResolution;
 use chrono::Datelike;
+#[cfg(with_serde)]
 use serde::de;
 use std::{fmt, str};
 
 const DATE_FORMAT: &str = "%Y-%m-%d";
 
+#[cfg(with_serde)]
 impl<'de> de::Deserialize<'de> for Day {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Day, D::Error>
     where
@@ -17,6 +19,7 @@ impl<'de> de::Deserialize<'de> for Day {
     }
 }
 
+#[cfg(with_serde)]
 impl serde::Serialize for Day {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

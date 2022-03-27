@@ -1,4 +1,6 @@
+#[cfg(with_serde)]
 use serde::de;
+
 use std::{any, fmt, hash, num};
 
 // #TODO
@@ -67,37 +69,78 @@ pub fn format_erased_resolution(
     }
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(Debug)]
 pub enum Error {
-    #[error("Got new data for {point}: {new} different from data already in the cache {old}")]
     GotNonMatchingNewData {
         point: String,
         old: String,
         new: String,
     },
-    #[error("Error parsing int: {0}")]
-    ParseInt(#[from] num::ParseIntError),
-    #[error("Error parsing date/time: {0}")]
-    ParseDate(#[from] chrono::ParseError),
-    #[error("Error parsing {ty_name} from input: {input}")]
+    ParseInt(num::ParseIntError),
+    ParseDate(chrono::ParseError),
     ParseCustom {
         ty_name: &'static str,
         input: String,
     },
-    #[error("Time range cannot be created from an empty set of periods")]
     EmptyRange,
-    #[error("Unexpected input length for date {date}, got {actual} but needed {required}")]
     UnexpectedStartDate {
         date: chrono::NaiveDate,
         required: chrono::Weekday,
         actual: chrono::Weekday,
     },
-    #[error("Unexpected input length for format {format}, got {actual} but needed {required}")]
     UnexpectedInputLength {
         required: usize,
         actual: usize,
         format: &'static str,
     },
+}
+
+impl From<num::ParseIntError> for Error {
+    fn from(e: num::ParseIntError) -> Error {
+        Error::ParseInt(e)
+    }
+}
+impl From<chrono::ParseError> for Error {
+    fn from(e: chrono::ParseError) -> Error {
+        Error::ParseDate(e)
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Error::*;
+        match self {
+            GotNonMatchingNewData { point, old, new } => write!(
+                f,
+                "Got new data for {point}: {new} different from data already in the cache {old}"
+            ),
+            ParseInt(e) => write!(f, "Error parsing int: {e}"),
+            ParseDate(e) => write!(f, "Error parsing date/time: {e}"),
+            ParseCustom { ty_name, input } => {
+                write!(f, "Error parsing {ty_name} from input: {input}")
+            }
+            EmptyRange => write!(
+                f,
+                "Time range cannot be created from an empty set of periods"
+            ),
+            UnexpectedStartDate {
+                date,
+                required,
+                actual,
+            } => write!(
+                f,
+                "Unexpected input length for date {date}, got {actual} but needed {required}"
+            ),
+            UnexpectedInputLength {
+                required,
+                actual,
+                format,
+            } => write!(
+                f,
+                "Unexpected input length for format {format}, got {actual} but needed {required}"
+            ),
+        }
+    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -119,6 +162,7 @@ pub trait TimeResolutionZone<Z: TimeZone>: TimeResolution {
     fn get_zone(&self) -> Z;
 }
 
+#[cfg(with_serde)]
 pub trait TimeResolution:
     Send
     + Sync
@@ -134,6 +178,47 @@ pub trait TimeResolution:
     + Sized
     + serde::Serialize
     + de::DeserializeOwned
+    + From<chrono::NaiveDateTime>
+{
+    fn succ(&self) -> Self {
+        self.succ_n(1)
+    }
+    fn pred(&self) -> Self {
+        self.pred_n(1)
+    }
+
+    // we choose i64 rather than u64
+    // as the behaviour on subtraction is nicer!
+    fn to_monotonic(&self) -> i64;
+    fn from_monotonic(idx: i64) -> Self;
+
+    // the default impls are probably inefficient
+    // makes sense to require just the n
+    // and give the 1 for free
+    fn succ_n(&self, n: u32) -> Self;
+    fn pred_n(&self, n: u32) -> Self;
+
+    fn between(&self, other: Self) -> i64;
+
+    fn naive_date_time(&self) -> chrono::NaiveDateTime;
+
+    fn name(&self) -> String;
+}
+
+#[cfg(not(with_serde))]
+pub trait TimeResolution:
+    Send
+    + Sync
+    + Clone
+    + Copy
+    + fmt::Debug
+    + fmt::Display
+    + PartialEq
+    + Eq
+    + PartialOrd
+    + Ord
+    + hash::Hash
+    + Sized
     + From<chrono::NaiveDateTime>
 {
     fn succ(&self) -> Self {

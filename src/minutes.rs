@@ -10,6 +10,7 @@ const PARSE_FORMAT: &str = "%Y-%m-%d %H:%M";
 /// 1. divides into an hour with no remainder (1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60)
 /// 2. is exactly a whole number of hours that divides into a day with no remainder (60, 120, 180, 240, 360, 480, 1800)
 /// Any other choice will result in unexpected / unuseful behaviour (eg the `Minutes` not cleanly fitting into parts of a day)
+#[cfg(with_serde)]
 #[derive(
     Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, serde::Deserialize, serde::Serialize,
 )]
@@ -18,6 +19,13 @@ pub struct Minutes<const N: u32> {
     index: i64,
 }
 
+#[cfg(not(with_serde))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Minutes<const N: u32> {
+    index: i64,
+}
+
+#[cfg(with_serde)]
 impl<const N: u32> TryFrom<Minutes_> for Minutes<N> {
     type Error = String;
     fn try_from(value: Minutes_) -> Result<Self, Self::Error> {
@@ -32,6 +40,7 @@ impl<const N: u32> TryFrom<Minutes_> for Minutes<N> {
     }
 }
 
+#[cfg(with_serde)]
 impl<const N: u32> From<Minutes<N>> for Minutes_ {
     fn from(w: Minutes<N>) -> Self {
         Minutes_ {
@@ -41,6 +50,7 @@ impl<const N: u32> From<Minutes<N>> for Minutes_ {
     }
 }
 
+#[cfg(with_serde)]
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Minutes_ {
     index: i64,

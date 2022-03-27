@@ -1,5 +1,6 @@
 use crate::{month, year, DateResolution, DateResolutionExt};
 use chrono::Datelike;
+#[cfg(with_serde)]
 use serde::de;
 use std::{convert::TryFrom, fmt, str};
 
@@ -143,6 +144,7 @@ mod tests {
     }
 }
 
+#[cfg(with_serde)]
 impl<'de> de::Deserialize<'de> for Quarter {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Quarter, D::Error>
     where
@@ -157,6 +159,7 @@ impl<'de> de::Deserialize<'de> for Quarter {
     }
 }
 
+#[cfg(with_serde)]
 impl serde::Serialize for Quarter {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
