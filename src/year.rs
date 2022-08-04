@@ -1,12 +1,16 @@
-use crate::{month, year, DateResolution};
+use crate::{month, DateResolution, DateResolutionExt};
 use chrono::Datelike;
-use serde::{
-    de,
-    ser::{self, SerializeStruct},
-};
-use std::{str, convert::TryFrom, fmt};
+use std::{convert::TryFrom, fmt, str};
 
-#[derive(Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord)]
+#[cfg(with_serde)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(transparent)]
+pub struct Year(i64);
+
+#[cfg(not(with_serde))]
+#[derive(Clone, Copy, Debug, Eq, PartialOrd, PartialEq, Ord, Hash)]
 pub struct Year(i64);
 
 impl crate::DateResolution for Year {
@@ -17,7 +21,7 @@ impl crate::DateResolution for Year {
 
 impl crate::TimeResolution for Year {
     fn between(&self, other: Self) -> i64 {
-        i64::from(other.0 - self.0)
+        other.0 - self.0
     }
     fn succ_n(&self, n: u32) -> Year {
         Year(self.0 + i64::from(n))
@@ -34,23 +38,41 @@ impl crate::TimeResolution for Year {
     fn to_monotonic(&self) -> i64 {
         self.0
     }
+    fn name(&self) -> String {
+        "Year".to_string()
+    }
+}
+
+impl From<chrono::NaiveDate> for Year {
+    fn from(d: chrono::NaiveDate) -> Self {
+        Year(i64::from(d.year()))
+    }
+}
+
+impl From<chrono::NaiveDateTime> for Year {
+    fn from(d: chrono::NaiveDateTime) -> Self {
+        d.date().into()
+    }
 }
 
 impl Year {
     pub fn first_month(&self) -> month::Month {
-        todo!()
+        self.start().into()
     }
     pub fn first_quarter(&self) -> month::Month {
-        todo!()
+        self.start().into()
     }
-    pub fn year(&self) -> year::Year {
-        todo!()
+    pub fn last_month(&self) -> month::Month {
+        self.end().into()
+    }
+    pub fn last_quarter(&self) -> month::Month {
+        self.end().into()
     }
     pub fn year_num(&self) -> i32 {
         i32::try_from(self.0).expect("Not pre/post historic")
     }
-    pub fn from_date(d: chrono::NaiveDate) -> Self {
-        Year(i64::from(d.year()))
+    pub fn new(year: i32) -> Self {
+        Year(i64::from(year))
     }
 }
 
@@ -67,30 +89,34 @@ impl str::FromStr for Year {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{DateResolution, TimeResolution};
 
-impl<'de> de::Deserialize<'de> for Year 
-{
-    fn deserialize<D>(
-        deserializer: D,
-    ) -> std::result::Result<Year, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        let y = i64::deserialize(deserializer)?;
-        Ok(Year(y))
+    #[test]
+    fn test_roundtrip() {
+        let dt = chrono::NaiveDate::from_ymd(2021, 12, 6);
+
+        let wk = Year::from(dt);
+        assert!(wk.start() <= dt && wk.end() >= dt);
+    }
+
+    #[test]
+    fn test_parse() {
+        assert_eq!(
+            "2021".parse::<Year>().unwrap().start(),
+            chrono::NaiveDate::from_ymd(2021, 1, 1),
+        );
+        assert_eq!(
+            "2021".parse::<Year>().unwrap().succ().start(),
+            chrono::NaiveDate::from_ymd(2022, 1, 1),
+        );
+        assert_eq!(
+            "2021".parse::<Year>().unwrap().succ().pred().start(),
+            chrono::NaiveDate::from_ymd(2021, 1, 1),
+        );
+
+        assert!("a2021".parse::<Year>().is_err(),);
     }
 }
-
-impl serde::Serialize for Year {
-    fn serialize<S>(
-        &self,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let s = self.to_string();
-        serializer.serialize_str(&s)
-    }
-}
-
